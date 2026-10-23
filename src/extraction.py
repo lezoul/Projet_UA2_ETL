@@ -50,6 +50,20 @@ def propre(texte):
     return t or None
 
 
+def niv_propre(texte):
+    """
+    'VIN: 3KPF24AD5ME123456' -> '3KPF24AD5ME123456' ; None si vide.
+    Retire l'étiquette « VIN: » ou « NIV: » (Dilawri l'affiche dans le même élément),
+    les espaces, et met en majuscules. Appliqué aux trois plateformes, par prudence.
+    """
+    t = propre(texte)
+    if not t:
+        return None
+    t = re.sub(r"^(VIN|NIV)\s*[:#]?\s*", "", t, flags=re.I)
+    t = re.sub(r"\s+", "", t).upper()
+    return t or None
+
+
 def changer_parametre(url, nom, valeur):
     """Remplace (ou ajoute) un paramètre de l'adresse : ?vip=2, ?pindex=3..."""
     p = urlparse(url)
@@ -143,7 +157,7 @@ def lire_page_magnetis(sp, url_page):
             "url_fiche": urljoin(url_page, lien["href"]) if lien else (complement.get(niv) or {}).get("url"),
             "id_annonce": carte.get("data-vehicle-id"),
             "no_stock": carte.get("data-vehicle-stock_number"),
-            "niv": niv,
+            "niv": niv_propre(niv),
             "annee": carte.get("data-vehicle-year"),
             "marque": propre(carte.get("data-vehicle-make")),
             "modele": propre(carte.get("data-vehicle-model")),
@@ -202,7 +216,7 @@ def lire_page_d2c(sp, url_page):
             "url_fiche": urljoin(url_page, titre["href"]) if titre else (complement.get(niv) or {}).get("url"),
             "id_annonce": donnees.get("data-carid"),
             "no_stock": donnees.get("data-stock-number"),
-            "niv": niv,
+            "niv": niv_propre(niv),
             "annee": donnees.get("data-year"),
             "marque": propre(donnees.get("data-make")),
             "modele": propre(donnees.get("data-model")),
@@ -285,7 +299,7 @@ def lire_page_dilawri(sp, url_page):
             "url_fiche": urljoin(url_page, carte.get("data-chrome-payment-url") or ""),
             "id_annonce": carte.get("data-chrome-payment-vid"),
             "no_stock": carte.get("data-chrome-payment-stock"),
-            "niv": propre(niv.get_text()) if niv else None,
+            "niv": niv_propre(niv.get_text()) if niv else None,
             "annee": carte.get("data-chrome-payment-year"),
             "marque": propre(carte.get("data-chrome-payment-make")),
             "modele": propre(carte.get("data-chrome-payment-model")),

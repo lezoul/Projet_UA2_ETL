@@ -225,3 +225,98 @@ COLONNES_VEHICULES = [
     "prix_affiche", "rabais", "frais", "prix_final", "km",
     "transmission", "traction", "carburant", "moteur", "couleur_ext", "categorie",
 ]
+
+# ---------------------------------------------------------------------------
+# Prétraitement (notebook 02_pretraitement.ipynb et src/pretraitement.py)
+# Toutes les règles de nettoyage sont ici, visibles et modifiables sans toucher au code.
+# ---------------------------------------------------------------------------
+
+# Fichiers produits par le prétraitement (dans resultats/)
+FICHIER_OBSERVATIONS = DOSSIER_RESULTATS / "observations_quotidiennes.csv"      # 1 ligne = 1 véhicule, 1 site, 1 jour
+FICHIER_VEHICULES = DOSSIER_RESULTATS / "vehicules_occasion_consolide.csv"      # 1 ligne = 1 véhicule (NIV)
+FICHIER_CONCESSIONNAIRES = DOSSIER_RESULTATS / "concessionnaires.csv"           # 1 ligne = 1 site (table de dimension)
+FICHIER_QUALITE = DOSSIER_RESULTATS / "rapport_qualite.csv"                     # contrôles de qualité
+
+# Groupe propriétaire de chaque site. Les 10 sites d'Ottawa appartiennent au Groupe Dilawri
+# (même plateforme, mentions « Dilawri » sur les sites). Pour Gatineau, aucune information
+# vérifiée : on écrit « Non déterminé » plutôt que de deviner (règle zéro risque, aussi pour les données).
+GROUPE_PAR_DEFAUT = "Non déterminé"
+GROUPES = {s["id"]: "Groupe Dilawri" for s in SITES if s["plateforme"] == "Dilawri"}
+
+# Collectes connues comme incomplètes : gardées dans les observations (avec collecte_complete = False),
+# mais exclues du calcul des statuts « nouveau » et « retiré » (sinon : faux nouveaux et faux retraits).
+COLLECTES_INCOMPLETES = [
+    {"plateforme": "Dilawri", "jour": "2026-10-09",
+     "raison": "Tri par défaut différent de la pagination : environ 12 véhicules manqués par site "
+               "(corrigé le 2026-10-22, fonction meme_ordre)."},
+]
+
+# Format d'un NIV valide : 17 caractères, sans I, O ni Q (norme ISO 3779)
+MOTIF_NIV = r"[A-HJ-NPR-Z0-9]{17}"
+
+# Seuils des contrôles de qualité
+KM_MINIMUM_PLAUSIBLE = 100     # moins de 100 km sur un véhicule de plus de 2 ans : suspect
+AGE_MINIMUM_KM_SUSPECT = 2     # (une démo récente avec 10 km est normale)
+
+# Harmonisation des valeurs : (motif, valeur harmonisée). Le motif est une expression régulière
+# cherchée dans le texte en minuscules ; la PREMIÈRE règle qui correspond gagne (l'ordre compte).
+# Une valeur qu'aucune règle ne reconnaît devient « Non reconnu » et apparaît dans rapport_qualite.csv.
+
+# « etat » mélange deux informations selon la plateforme : l'état (occasion ou démo) chez Magnetis
+# et D2C, la disponibilité (en stock ou en arrivage) chez Dilawri. On les sépare en deux colonnes.
+REGLES_ETAT = [
+    (r"d[ée]mo", "Démo"),
+    (r"occasion|used|pre-?owned|in.?stock|incoming", "Occasion"),   # pages « occasion » seulement
+]
+REGLES_DISPONIBILITE = [
+    (r"incoming|arrivage|transit", "En arrivage"),
+    (r"in.?stock|en stock", "En stock"),
+]
+
+REGLES_TRANSMISSION = [
+    (r"manu|^man\b|^man\.", "Manuelle"),
+    (r"auto|cvt|variation continue", "Automatique"),   # une CVT est une boîte automatique
+]
+
+REGLES_TRACTION = [
+    (r"awd|int[ée]grale|all.?wheel", "Intégrale (AWD)"),
+    (r"4\s*[x×]\s*4|4wd|4 roues motrices", "4x4"),
+    (r"fwd|traction avant|front", "Avant (FWD)"),
+    (r"rwd|propulsion|4\s*[x×]\s*2|rear", "Arrière (RWD)"),
+]
+
+REGLES_CARBURANT = [
+    (r"hybrid", "Hybride"),
+    (r"[ée]lectri|electric|\bev\b", "Électrique"),
+    (r"diesel", "Diesel"),
+    (r"essence|gas", "Essence"),
+]
+
+REGLES_CATEGORIE = [
+    (r"suv|vus|utilitaire sport|crossover", "VUS"),
+    (r"cargo|commercia", "Fourgon utilitaire"),
+    (r"passenger van|minivan|fourgonnette", "Fourgonnette"),
+    (r"regular side|pickup|pick-up|camion|truck|\bcab\b", "Camionnette"),
+    (r"sedan|berline|hatchback|coupe|coupé|convertible|cabriolet|wagon|familiale|autos?$", "Automobile"),
+]
+
+REGLES_COULEUR = [            # famille de couleur, à partir du nom commercial (souvent tronqué)
+    (r"noir|black|ebony|onyx|midnight", "Noir"),
+    (r"blanc|white|snow|wind chill|alpine|blizzard|powder", "Blanc"),
+    (r"rouge|red\b|maroon|crimson|bordeaux|chili|lava", "Rouge"),
+    (r"bleu|blue|navy|denim|\bbl$", "Bleu"),          # « bl » : nom tronqué par le site
+    (r"vert|green", "Vert"),
+    (r"brun|brown|bronze|copper|cuivre", "Brun"),
+    (r"orange", "Orange"),
+    (r"jaune|yellow", "Jaune"),
+    (r"beige|sable|sand", "Beige"),
+    (r"argent|silver|lunaire", "Argent"),
+    (r"gris|grey|gray|graphite|steel|granite|anvil|titan|cement|magnetic|gravity|carbon|acier", "Gris"),
+]
+
+# Marques : une seule écriture par marque (ACURA, Acura -> Acura). Clé en majuscules.
+MARQUES = {
+    "ACURA": "Acura", "HYUNDAI": "Hyundai", "INFINITI": "Infiniti", "FIAT": "Fiat",
+    "RAM": "RAM", "GMC": "GMC", "BMW": "BMW", "MERCEDES-BENZ": "Mercedes-Benz",
+    "ALFA ROMEO": "Alfa Romeo", "MINI": "MINI",
+}

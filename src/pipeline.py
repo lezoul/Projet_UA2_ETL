@@ -4,13 +4,16 @@ Lance tout le projet de bout en bout, sans ouvrir le notebook :
     1. diagnostic des 18 sites (parties 1 et 2) ;
     2. collecte des véhicules (partie 3) ;
     3. journal de tests mis à jour (annexe C), fichier de tous les véhicules du jour,
-       et une ligne par site ajoutée à l'historique des collectes.
+       et une ligne par site ajoutée à l'historique des collectes ;
+    4. prétraitement (partie 4) : tous les fichiers bruts -> observations quotidiennes,
+       véhicules consolidés, concessionnaires et rapport de qualité.
 
 Utilisation, depuis la racine du projet (environnement .venv activé) :
-    python src/pipeline.py                                    # tout : diagnostic + collecte
+    python src/pipeline.py                                    # tout : diagnostic + collecte + prétraitement
     python src/pipeline.py --etapes collecte                  # seulement la collecte
+    python src/pipeline.py --etapes pretraitement             # seulement le prétraitement (aucune requête)
     python src/pipeline.py --sites hull_nissan bank_street_kia   # seulement certains sites
-    python src/pipeline.py --etapes collecte --silencieux --log  # mode automatique (chaque nuit)
+    python src/pipeline.py --etapes collecte pretraitement --silencieux --log  # mode automatique (chaque nuit)
 
 Collecte quotidienne : scripts/collecte_quotidienne.bat lance la dernière commande ci-dessus,
 et scripts/installer_tache.ps1 l'inscrit dans le Planificateur de tâches de Windows.
@@ -31,6 +34,7 @@ import pandas as pd
 import config
 import diagnostic
 import extraction
+import pretraitement
 import projet_scraping as ws
 
 
@@ -69,12 +73,24 @@ def ajouter_historique(rapports, sites):
 
 def executer(args):
     """Le déroulement du pipeline (appelé par main, avec ou sans fichier de log)."""
+    debut = datetime.now()
+    print(f"{debut:%Y-%m-%d %H:%M:%S} | étapes : {', '.join(args.etapes)}")
+    if "diagnostic" in args.etapes or "collecte" in args.etapes:
+        executer_collecte(args, debut)
+
+    # --- 4. Prétraitement (aucune requête : lit seulement resultats/brut/)
+    if "pretraitement" in args.etapes:
+        print("\n--- Prétraitement")
+        pretraitement.pretraiter()
+    print(f"Terminé en {(datetime.now() - debut).seconds // 60} min {(datetime.now() - debut).seconds % 60} s")
+
+
+def executer_collecte(args, debut):
+    """Étapes 1 à 3 : diagnostic et/ou collecte, puis journal de tests."""
     sites = choisir_sites(args.sites)
     afficher = not args.silencieux
     session = ws.creer_session(config.USER_AGENT)
-    debut = datetime.now()
-    print(f"{debut:%Y-%m-%d %H:%M:%S} | {len(diagnostic.sites_sans_doublons(sites))} URL uniques ; "
-          f"étapes : {', '.join(args.etapes)}")
+    print(f"{len(diagnostic.sites_sans_doublons(sites))} URL uniques")
 
     # --- 1. Diagnostic
     if "diagnostic" in args.etapes:
@@ -103,12 +119,12 @@ def executer(args):
     resume = journal.reindex(columns=["nom", "statut", "cas_confirme", "nb_lignes"]).copy()
     resume["cas_confirme"] = resume["cas_confirme"].astype(str).str.split(" (", regex=False).str[0]
     print(resume.to_string(index=False))
-    print(f"Terminé en {(datetime.now() - debut).seconds // 60} min {(datetime.now() - debut).seconds % 60} s")
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Diagnostic et collecte des inventaires de véhicules d'occasion")
-    ap.add_argument("--etapes", nargs="+", choices=["diagnostic", "collecte"], default=["diagnostic", "collecte"])
+    ap.add_argument("--etapes", nargs="+", choices=["diagnostic", "collecte", "pretraitement"],
+                    default=["diagnostic", "collecte", "pretraitement"])
     ap.add_argument("--sites", nargs="*", default=[], help="identifiants des sites (par défaut : tous)")
     ap.add_argument("--silencieux", action="store_true", help="n'affiche que le résumé")
     ap.add_argument("--log", action="store_true",

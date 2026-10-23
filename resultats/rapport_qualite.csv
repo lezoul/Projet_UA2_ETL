@@ -1,0 +1,18 @@
+﻿controle,nb_lignes,pourcentage,detail
+Lignes au total,1483,100.0,34 fichiers
+NIV avec préfixe « VIN: » corrigé,1026,69.2,
+"NIV invalide (gardé, signalé)",2,0.1,5NMS2CAD2KHO53727
+Prix non affiché (0 ou vide),34,2.3,"Dilawri: 30, Magnetis: 4"
+"Kilométrage suspect (< 100 km, plus de 2 ans)",2,0.1,2019 Mazda Mazda3 Sport (11 km) | 2010 Dodge Journey (11 km)
+Kilométrage manquant,1,0.1,
+"Ligne d'une collecte incomplète (gardée, exclue des statuts)",455,30.7,Dilawri 2026-10-09
+Catégorie déduite du même modèle sur un autre site,178,12.0,
+transmission manquant,7,0.5,
+transmission non reconnu (règle à ajouter dans config.py),0,0.0,
+traction manquant,25,1.7,
+traction non reconnu (règle à ajouter dans config.py),0,0.0,
+carburant manquant,1250,84.3,
+carburant non reconnu (règle à ajouter dans config.py),0,0.0,
+categorie manquant,57,3.8,
+categorie non reconnu (règle à ajouter dans config.py),0,0.0,
+Couleur classée « Autre »,28,1.9,FLUID METAL | LIQUID PLATINUM METALLIC | MOONLIGHT CLOUD | PEARL | PERFORMANCE BLU | PLATINUM | QUARTZ | Riverstone Metallic | STORMY SEA | TAN
