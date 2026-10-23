@@ -18,6 +18,8 @@ DOSSIER_HTML = RACINE / "pages_brutes"           # HTML téléchargé au diagnos
 DOSSIER_RESULTATS = RACINE / "resultats"
 DOSSIER_BRUT = DOSSIER_RESULTATS / "brut"        # un CSV par site et par date de collecte
 FICHIER_JOURNAL = DOSSIER_RESULTATS / "journal_tests.csv"
+FICHIER_HISTORIQUE = DOSSIER_RESULTATS / "historique_collectes.csv"   # une ligne par site et par collecte
+DOSSIER_LOGS = RACINE / "logs"                   # un fichier de log par exécution automatique
 
 # ---------------------------------------------------------------------------
 # Partie 0 du cours : identification et politesse

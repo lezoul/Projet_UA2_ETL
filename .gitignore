@@ -1,5 +1,15 @@
+# Environnement virtuel (se recrée avec requirements.txt)
 .venv/
+
+# Fichiers générés automatiquement par Python
 __pycache__/
 *.pyc
+
+# Pages HTML téléchargées (lourdes, et contenu protégé des concessionnaires)
 pages_brutes/
+
+# Logs des collectes automatiques (propres à chaque ordinateur)
+logs/
+
+# Points de sauvegarde de Jupyter
 .ipynb_checkpoints/

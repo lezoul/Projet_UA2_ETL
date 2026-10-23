@@ -330,6 +330,19 @@ def modele_pagination(sp, url_page, param):
     return None
 
 
+def meme_ordre(url_depart, url_modele, param):
+    """
+    Vrai si l'adresse de départ et le lien de pagination ont les mêmes paramètres (tri, filtres),
+    sans compter le numéro de page. Exemple : Magnetis (?vip=2 seul) -> vrai ;
+    Dilawri (?type=U contre ?type=U&sort=tadded_asc&psize=12...) -> faux.
+    """
+    def parametres(url):
+        p = parse_qs(urlparse(url).query, keep_blank_values=True)
+        p.pop(param, None)
+        return p
+    return parametres(url_depart) == parametres(url_modele)
+
+
 def total_annonce(sp):
     """Nombre de véhicules annoncé par la page (sert de condition d'arrêt), ou None."""
     texte = ws.texte_visible(sp)
@@ -364,6 +377,7 @@ def extraire_vehicules(site, session, afficher=True):
     delai = diagnostic.delai_du_site(site)
     vehicules, vus, pages_vues = [], set(), set()
     url, numero, modele, total = site["url"], 1, None, None
+    realigne = False     # True une fois la page 1 relue dans l'ordre des liens de pagination
 
     while url and len(pages_vues) < config.MAX_PAGES_PAR_SITE:
         if url in pages_vues:                       # même logique que parcourir_pages() du cours
@@ -397,6 +411,18 @@ def extraire_vehicules(site, session, afficher=True):
         if numero == 1:
             modele = modele_pagination(sp, r.url, plateforme["param_page"])
             total = total_annonce(sp)
+
+            # Même ordre de tri pour toutes les pages. Chez Dilawri, l'adresse de départ utilise le tri
+            # par défaut du site, mais les liens de pagination imposent un autre tri (sort=tadded_asc).
+            # Lire la page 1 dans un ordre et les pages 2 à N dans un autre ferait manquer une page
+            # entière (constaté le 2026-10-22 : 12 véhicules manquants sur chaque site Dilawri).
+            # On relit donc une fois la page 1 dans l'ordre des liens (une requête de plus par site).
+            if modele and not realigne and not meme_ordre(site["url"], modele, plateforme["param_page"]):
+                realigne = True
+                url = changer_parametre(modele, plateforme["param_page"], 1)
+                if afficher:
+                    print("  page 1 relue dans l'ordre de tri des liens de pagination")
+                continue
 
         # Conditions d'arrêt : pas de pagination, page sans nouveauté, total annoncé atteint
         if modele is None or nouveaux == 0 or (total and len(vehicules) >= total):
