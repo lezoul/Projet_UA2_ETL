@@ -7,6 +7,7 @@ Sorties : resultats/observations_quotidiennes.csv      1 ligne = 1 véhicule vu 
           resultats/vehicules_occasion_consolide.csv   1 ligne = 1 véhicule (NIV), tout son historique résumé
           resultats/concessionnaires.csv               1 ligne = 1 site (table de dimension pour Power BI)
           resultats/rapport_qualite.csv                les contrôles de qualité et leurs résultats
+          resultats/recap_pretraitement.csv            récapitulatif avant / après le prétraitement
 
 Principes :
   - la source n'est jamais perdue : chaque ligne garde son fichier, son site, sa plateforme, son groupe
@@ -27,7 +28,8 @@ Fonctions (dans l'ordre du traitement) :
     controler_qualite(df)        -> indicateurs de qualité + rapport
     construire_observations(df)  -> table des observations (1 véhicule, 1 site, 1 jour)
     construire_vehicules(obs)    -> table des véhicules (1 NIV)
-    pretraiter()                 -> tout, de bout en bout, et écrit les 4 fichiers
+    recapitulatif(brut, df, ...) -> tableau avant / après (données brutes contre données prétraitées)
+    pretraiter()                 -> tout, de bout en bout, et écrit les 5 fichiers
 """
 
 import re
@@ -424,7 +426,94 @@ def construire_concessionnaires():
 
 
 # ---------------------------------------------------------------------------
-# 8. Tout, de bout en bout
+# 8. Récapitulatif avant / après
+# ---------------------------------------------------------------------------
+
+def _pct(n, total):
+    return f"{n} ({100 * n / total:.1f} %)" if total else str(n)
+
+
+def recapitulatif(brut, df, observations, vehicules):
+    """
+    Compare les données brutes (telles que lues dans resultats/brut/) aux données prétraitées.
+    brut = sortie de charger_collectes() ; df = lignes après controler_qualite() ;
+    observations, vehicules = les deux tables finales. Retourne un tableau thème / indicateur / avant / après.
+    """
+    n = len(brut)
+    lignes = []
+
+    def ajouter(theme, indicateur, avant, apres, effet):
+        lignes.append({"theme": theme, "indicateur": indicateur, "avant": str(avant), "apres": str(apres),
+                       "effet": effet})
+
+    vide = lambda s: s.isna() | (s.astype(str).str.strip() == "")
+
+    # Volume
+    ajouter("Volume", "Lignes", f"{n} lignes dans {brut['fichier_source'].nunique()} fichiers",
+            f"{len(observations)} observations", "aucune ligne supprimée ; doublons du même jour retirés s'il y en a")
+    ajouter("Volume", "Véhicules distincts", f"{brut['niv'].nunique()} NIV différents en apparence",
+            f"{len(vehicules)} véhicules",
+            "« VIN: X » (avant la correction de l'extracteur) et « X » désignaient le même véhicule ; "
+            "une ligne par NIV dans la table des véhicules")
+    ajouter("Volume", "Colonnes", f"{len(config.COLONNES_VEHICULES)} colonnes, tout en texte",
+            f"{observations.shape[1]} colonnes typées (observations), {vehicules.shape[1]} (véhicules)",
+            "source, origine des valeurs, indicateurs de qualité, prix comparable")
+
+    # Identifiant
+    prefixe = brut["niv"].fillna("").str.contains(r"^\s*VIN", case=False)
+    ajouter("Identifiant", "NIV précédés de « VIN: »", _pct(int(prefixe.sum()), n), "0",
+            "préfixe retiré, NIV en majuscules (niv_brut garde l'original)")
+    ajouter("Identifiant", "NIV invalides (hors norme ISO 3779)", "non contrôlé",
+            _pct(int(df["niv_invalide"].sum()), n), "gardés et signalés (niv_invalide)")
+
+    # Écritures différentes d'une même information
+    for colonne, libelle in [("etat", "État"), ("transmission", "Transmission"), ("traction", "Traction"),
+                             ("carburant", "Carburant"), ("categorie", "Catégorie"), ("marque", "Marque")]:
+        avant = brut[colonne].dropna().astype(str).str.strip()
+        apres = df[colonne].dropna()
+        effet = ("une seule écriture par marque (ACURA et Acura -> Acura)" if colonne == "marque"
+                 else ", ".join(sorted(apres.unique().astype(str))))
+        if colonne == "etat":
+            effet += " ; la disponibilité (En stock, En arrivage) est séparée dans disponibilite"
+        ajouter("Écritures", f"{libelle} : valeurs différentes", avant[avant != ""].nunique(), apres.nunique(),
+                effet)
+    ajouter("Écritures", "Couleur : valeurs différentes", brut["couleur_ext"].dropna().nunique(),
+            df["famille_couleur"].nunique(), "noms commerciaux regroupés en familles (famille_couleur)")
+
+    # Valeurs manquantes
+    for colonne, libelle in [("carburant", "Carburant"), ("categorie", "Catégorie"),
+                             ("traction", "Traction"), ("transmission", "Transmission")]:
+        source = f"{colonne}_source"
+        comment = (f"{int((df[source] == 'vPIC (NHTSA)').sum())} complétées par le NIV (vPIC)"
+                   if source in df else "valeurs du site seulement")
+        if colonne == "categorie":
+            comment += f", {int(df['categorie_deduite'].sum())} déduites du modèle"
+        ajouter("Manquants", f"{libelle} manquant", _pct(int(vide(brut[colonne]).sum()), n),
+                _pct(int(df[colonne].isna().sum()), n), comment)
+    ajouter("Manquants", "Couleur manquante", _pct(int(vide(brut["couleur_ext"]).sum()), n),
+            _pct(int((df["famille_couleur"] == "Non précisé").sum()), n), "non codée dans le NIV : rien à compléter")
+
+    # Prix
+    prix = pd.to_numeric(brut["prix_final"], errors="coerce")
+    ajouter("Prix", "Prix à 0 $ ou vides", _pct(int((prix.isna() | (prix <= 0)).sum()), n),
+            f"0 prix à 0 $ ; {int(df['prix_non_affiche'].sum())} signalés", "convertis en prix manquant, signalés (prix_non_affiche)")
+    ajouter("Prix", "Prix comparables entre plateformes", "non (frais inclus sur 2 sites Dilawri)",
+            "oui (prix_comparable)", "prix_final - frais")
+
+    # Contrôles et traçabilité
+    ajouter("Qualité", "Kilométrage suspect", "non contrôlé", _pct(int(df["km_suspect"].sum()), n),
+            "moins de 100 km sur un véhicule de plus de 2 ans : signalé")
+    ajouter("Traçabilité", "Origine de chaque ligne", "nom du fichier seulement",
+            "fichier, site, groupe, jour, collecte complète", "fichier_source, groupe, jour, collecte_complete")
+    ajouter("Analyse", "Statut des véhicules", "aucun",
+            f"{int((vehicules['statut'] == 'En ligne').sum())} en ligne, "
+            f"{int((vehicules['statut'] == 'Retiré').sum())} retirés, {int(vehicules['nouveau'].sum())} nouveaux",
+            "calculé sur les collectes complètes")
+    return pd.DataFrame(lignes)
+
+
+# ---------------------------------------------------------------------------
+# 9. Tout, de bout en bout
 # ---------------------------------------------------------------------------
 
 def enregistrer(df, chemin):
@@ -435,7 +524,7 @@ def enregistrer(df, chemin):
 
 
 def pretraiter(dossier=None, enregistrer_fichiers=True):
-    """Chargement -> types -> harmonisation -> prix comparable -> qualité -> 2 tables + dimension + rapport."""
+    """Chargement -> types -> harmonisation -> prix comparable -> qualité -> 2 tables + dimension + rapports."""
     debut = datetime.now()
     brut = charger_collectes(dossier)
     df = nettoyer_types(brut)
@@ -445,6 +534,7 @@ def pretraiter(dossier=None, enregistrer_fichiers=True):
     observations = construire_observations(df)
     vehicules = construire_vehicules(observations)
     concessionnaires = construire_concessionnaires()
+    recap = recapitulatif(brut, df, observations, vehicules)
 
     if enregistrer_fichiers:
         print("Fichiers écrits :")
@@ -452,11 +542,12 @@ def pretraiter(dossier=None, enregistrer_fichiers=True):
         enregistrer(vehicules, config.FICHIER_VEHICULES)
         enregistrer(concessionnaires, config.FICHIER_CONCESSIONNAIRES)
         enregistrer(rapport, config.FICHIER_QUALITE)
+        enregistrer(recap, config.FICHIER_RECAP)
     print(f"Prétraitement terminé en {(datetime.now() - debut).total_seconds():.1f} s : "
           f"{len(observations)} observations, {len(vehicules)} véhicules "
           f"({(vehicules['statut'] == 'En ligne').sum()} en ligne, {(vehicules['statut'] == 'Retiré').sum()} retirés)")
     return {"observations": observations, "vehicules": vehicules,
-            "concessionnaires": concessionnaires, "rapport": rapport}
+            "concessionnaires": concessionnaires, "rapport": rapport, "recap": recap}
 
 
 if __name__ == "__main__":

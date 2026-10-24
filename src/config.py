@@ -239,6 +239,7 @@ FICHIER_OBSERVATIONS = DOSSIER_RESULTATS / "observations_quotidiennes.csv"      
 FICHIER_VEHICULES = DOSSIER_RESULTATS / "vehicules_occasion_consolide.csv"      # 1 ligne = 1 véhicule (NIV)
 FICHIER_CONCESSIONNAIRES = DOSSIER_RESULTATS / "concessionnaires.csv"           # 1 ligne = 1 site (table de dimension)
 FICHIER_QUALITE = DOSSIER_RESULTATS / "rapport_qualite.csv"                     # contrôles de qualité
+FICHIER_RECAP = DOSSIER_RESULTATS / "recap_pretraitement.csv"                   # avant / après le prétraitement
 
 # Groupe propriétaire de chaque site. Les 10 sites d'Ottawa appartiennent au Groupe Dilawri
 # (même plateforme, mentions « Dilawri » sur les sites). Pour Gatineau, aucune information

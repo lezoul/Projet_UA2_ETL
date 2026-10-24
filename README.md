@@ -52,7 +52,8 @@ Projet_UA2_ETL/
 │   ├── observations_quotidiennes.csv   # 1 ligne = 1 véhicule, 1 site, 1 jour
 │   ├── vehicules_occasion_consolide.csv # 1 ligne = 1 véhicule (NIV)
 │   ├── concessionnaires.csv            # 1 ligne = 1 site (dimension Power BI)
-│   └── rapport_qualite.csv             # contrôles de qualité
+│   ├── rapport_qualite.csv             # contrôles de qualité
+│   └── recap_pretraitement.csv         # récapitulatif avant / après le prétraitement
 ├── pages_brutes/                  # HTML du diagnostic (non publié)
 ├── logs/                          # un log par exécution automatique (non publié)
 ├── README.md

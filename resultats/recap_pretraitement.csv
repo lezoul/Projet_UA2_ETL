@@ -1,0 +1,23 @@
+﻿theme,indicateur,avant,apres,effet
+Volume,Lignes,2287 lignes dans 51 fichiers,2287 observations,aucune ligne supprimée ; doublons du même jour retirés s'il y en a
+Volume,Véhicules distincts,1515 NIV différents en apparence,949 véhicules,« VIN: X » (avant la correction de l'extracteur) et « X » désignaient le même véhicule ; une ligne par NIV dans la table des véhicules
+Volume,Colonnes,"27 colonnes, tout en texte","48 colonnes typées (observations), 34 (véhicules)","source, origine des valeurs, indicateurs de qualité, prix comparable"
+Identifiant,NIV précédés de « VIN: »,1026 (44.9 %),0,"préfixe retiré, NIV en majuscules (niv_brut garde l'original)"
+Identifiant,NIV invalides (hors norme ISO 3779),non contrôlé,3 (0.1 %),gardés et signalés (niv_invalide)
+Écritures,État : valeurs différentes,6,2,"Démo, Occasion ; la disponibilité (En stock, En arrivage) est séparée dans disponibilite"
+Écritures,Transmission : valeurs différentes,13,2,"Automatique, Manuelle"
+Écritures,Traction : valeurs différentes,10,4,"4x4, Arrière (RWD), Avant (FWD), Intégrale (AWD)"
+Écritures,Carburant : valeurs différentes,5,4,"Diesel, Essence, Hybride, Électrique"
+Écritures,Catégorie : valeurs différentes,13,5,"Automobile, Camionnette, Fourgon utilitaire, Fourgonnette, VUS"
+Écritures,Marque : valeurs différentes,30,28,une seule écriture par marque (ACURA et Acura -> Acura)
+Écritures,Couleur : valeurs différentes,167,13,noms commerciaux regroupés en familles (famille_couleur)
+Manquants,Carburant manquant,1943 (85.0 %),130 (5.7 %),1813 complétées par le NIV (vPIC)
+Manquants,Catégorie manquant,355 (15.5 %),8 (0.3 %),"326 complétées par le NIV (vPIC), 21 déduites du modèle"
+Manquants,Traction manquant,38 (1.7 %),8 (0.3 %),30 complétées par le NIV (vPIC)
+Manquants,Transmission manquant,11 (0.5 %),11 (0.5 %),valeurs du site seulement
+Manquants,Couleur manquante,674 (29.5 %),674 (29.5 %),non codée dans le NIV : rien à compléter
+Prix,Prix à 0 $ ou vides,50 (2.2 %),0 prix à 0 $ ; 50 signalés,"convertis en prix manquant, signalés (prix_non_affiche)"
+Prix,Prix comparables entre plateformes,non (frais inclus sur 2 sites Dilawri),oui (prix_comparable),prix_final - frais
+Qualité,Kilométrage suspect,non contrôlé,3 (0.1 %),moins de 100 km sur un véhicule de plus de 2 ans : signalé
+Traçabilité,Origine de chaque ligne,nom du fichier seulement,"fichier, site, groupe, jour, collecte complète","fichier_source, groupe, jour, collecte_complete"
+Analyse,Statut des véhicules,aucun,"804 en ligne, 145 retirés, 53 nouveaux",calculé sur les collectes complètes
