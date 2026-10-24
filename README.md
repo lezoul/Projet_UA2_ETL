@@ -94,8 +94,9 @@ Unblock-File .\scripts\installer_tache.ps1
 ```
 
 La tâche lance chaque jour à 3 h `scripts\collecte_quotidienne.bat`, qui exécute la collecte, le décodage
-des nouveaux NIV puis le prétraitement et écrit un log daté dans `logs\`. Si l'ordinateur est éteint à 3 h, la tâche s'exécute à la
-prochaine ouverture de session. Pour la retirer : `.\scripts\installer_tache.ps1 -Desinstaller`.
+des nouveaux NIV puis le prétraitement et écrit un log daté dans `logs\`. Si l'ordinateur est en veille à 3 h, Windows le réveille, et
+`pipeline.py` empêche la remise en veille jusqu'à la fin. S'il est éteint, la tâche s'exécute à la prochaine
+ouverture de session. Pour la retirer : `.\scripts\installer_tache.ps1 -Desinstaller`.
 
 ## Règles éthiques appliquées
 

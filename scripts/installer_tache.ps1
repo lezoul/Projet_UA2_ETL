@@ -4,7 +4,9 @@ Projet UA2 Web scraping : véhicules d'occasion (Ottawa-Gatineau)
 
 Inscrit la collecte quotidienne dans le Planificateur de tâches de Windows.
   - tous les jours à 3 h du matin (heure creuse pour les sites) ;
-  - si l'ordinateur était éteint ou en veille à 3 h, la tâche se lance dès qu'il redémarre ;
+  - si l'ordinateur est en veille à 3 h, Windows le réveille pour la tâche (WakeToRun) ;
+    pipeline.py empêche ensuite la remise en veille jusqu'à la fin de l'exécution ;
+  - si l'ordinateur était éteint à 3 h, la tâche se lance dès qu'il redémarre (StartWhenAvailable) ;
   - fonctionne aussi sur batterie (ordinateur portable) ;
   - arrêtée automatiquement si elle dure plus d'une heure (garde-fou).
 
@@ -43,6 +45,7 @@ $Action   = New-ScheduledTaskAction -Execute $Bat -WorkingDirectory $Racine
 $Trigger  = New-ScheduledTaskTrigger -Daily -At $Heure
 $Reglages = New-ScheduledTaskSettingsSet `
               -StartWhenAvailable `
+              -WakeToRun `
               -AllowStartIfOnBatteries `
               -DontStopIfGoingOnBatteries `
               -ExecutionTimeLimit (New-TimeSpan -Hours 1) `
@@ -58,7 +61,7 @@ Write-Host ""
 Write-Host "Tâche installée : $NomTache"
 Write-Host "  Script        : $Bat"
 Write-Host "  Dossier       : $Racine"
-Write-Host "  Heure         : tous les jours à $Heure"
+Write-Host "  Heure         : tous les jours à $Heure (réveille l'ordinateur s'il est en veille)"
 Write-Host "  Prochaine exécution : $($Info.NextRunTime)"
 Write-Host ""
 Write-Host "Pour tester tout de suite : Start-ScheduledTask -TaskName `"$NomTache`""

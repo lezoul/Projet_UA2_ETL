@@ -1,0 +1,4 @@
+﻿date_collecte,id,nom,nb_vehicules,pages_collectees,fichier_csv,remarques
+2026-10-23T23:34:18,orleans_mitsubishi,Orleans Mitsubishi,48,4,resultats\brut\orleans_mitsubishi_2026-10-23.csv,
+2026-10-23T23:34:29,hyundai_hunt_club,Hyundai On Hunt Club,32,3,resultats\brut\hyundai_hunt_club_2026-10-23.csv,
+2026-10-23T23:34:43,kia_hunt_club,Kia On Hunt Club,51,5,resultats\brut\kia_hunt_club_2026-10-23.csv,

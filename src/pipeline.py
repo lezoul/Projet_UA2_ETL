@@ -24,7 +24,7 @@ et scripts/installer_tache.ps1 l'inscrit dans le Planificateur de tâches de Win
 import argparse
 import logging
 import sys
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from datetime import datetime
 from pathlib import Path
 
@@ -39,6 +39,27 @@ import enrichissement
 import extraction
 import pretraitement
 import projet_scraping as ws
+
+
+@contextmanager
+def empecher_veille():
+    """
+    Empêche Windows de se mettre en veille pendant l'exécution, puis rétablit le comportement normal.
+    Constaté le 2026-10-23 : réveillé brièvement à 5 h 31, l'ordinateur s'est rendormi à 5 h 35, au milieu
+    de la collecte (3 sites manqués). SetThreadExecutionState est la fonction de Windows prévue pour cela :
+    ES_CONTINUOUS | ES_SYSTEM_REQUIRED garde le système éveillé tant que le programme tourne, sans
+    allumer l'écran. Sur un autre système que Windows, ne fait rien.
+    """
+    windows = sys.platform == "win32"
+    if windows:
+        import ctypes
+        ES_CONTINUOUS, ES_SYSTEM_REQUIRED = 0x80000000, 0x00000001
+        ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)
+    try:
+        yield
+    finally:
+        if windows:
+            ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)   # veille de nouveau permise
 
 
 def choisir_sites(ids):
@@ -140,7 +161,8 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     if not args.log:
-        executer(args)
+        with empecher_veille():
+            executer(args)
         return
 
     # Mode automatique : personne ne regarde l'écran, donc tout va dans un fichier de log daté,
@@ -154,7 +176,8 @@ def main(argv=None):
         anciens = racine_log.handlers[:]
         racine_log.handlers = [gestionnaire]
         try:
-            executer(args)
+            with empecher_veille():
+                executer(args)
         except SystemExit:
             raise
         except Exception:

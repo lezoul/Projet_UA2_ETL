@@ -1,21 +1,21 @@
 ﻿controle,nb_lignes,pourcentage,detail
-Lignes au total,2156,100.0,48 fichiers
-NIV avec préfixe « VIN: » corrigé,1026,47.6,
+Lignes au total,2287,100.0,51 fichiers
+NIV avec préfixe « VIN: » corrigé,1026,44.9,
 "NIV invalide (gardé, signalé)",3,0.1,5NMS2CAD2KHO53727
-Prix non affiché (0 ou vide),41,1.9,"Dilawri: 36, Magnetis: 5"
+Prix non affiché (0 ou vide),50,2.2,"Dilawri: 45, Magnetis: 5"
 "Kilométrage suspect (< 100 km, plus de 2 ans)",3,0.1,2019 Mazda Mazda3 Sport (11 km) | 2010 Dodge Journey (11 km) | 2010 Dodge Journey (11 km)
 Kilométrage manquant,2,0.1,
-"Ligne d'une collecte incomplète (gardée, exclue des statuts)",455,21.1,Dilawri 2026-10-09
-Catégorie déduite du même modèle sur un autre site,20,0.9,
-carburant complété par le NIV (API vPIC),1691,78.4,
-categorie complété par le NIV (API vPIC),325,15.1,
-traction complété par le NIV (API vPIC),30,1.4,
+"Ligne d'une collecte incomplète (gardée, exclue des statuts)",455,19.9,Dilawri 2026-10-09
+Catégorie déduite du même modèle sur un autre site,21,0.9,
+carburant complété par le NIV (API vPIC),1813,79.3,
+categorie complété par le NIV (API vPIC),326,14.3,
+traction complété par le NIV (API vPIC),30,1.3,
 transmission manquant,11,0.5,
 transmission non reconnu (règle à ajouter dans config.py),0,0.0,
-traction manquant,8,0.4,
+traction manquant,8,0.3,
 traction non reconnu (règle à ajouter dans config.py),0,0.0,
-carburant manquant,121,5.6,
+carburant manquant,130,5.7,
 carburant non reconnu (règle à ajouter dans config.py),0,0.0,
-categorie manquant,8,0.4,
+categorie manquant,8,0.3,
 categorie non reconnu (règle à ajouter dans config.py),0,0.0,
-Couleur classée « Autre »,40,1.9,FLUID METAL | LIQUID PLATINUM METALLIC | MOONLIGHT CLOUD | PEARL | PERFORMANCE BLU | PLATINUM | QUARTZ | Riverstone Metallic | STORMY SEA | TAN
+Couleur classée « Autre »,44,1.9,DEEP ESPRESSO BRO | FLUID METAL | LIQUID PLATINUM METALLIC | MOONLIGHT CLOUD | PEARL | PERFORMANCE BLU | PLATINUM | QUARTZ | Riverstone Metallic | STORMY SEA
