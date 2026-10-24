@@ -499,9 +499,11 @@ def ajouter_collecte_au_journal(journal, rapports):
         journal.at[i, "date_collecte"] = r.get("date_collecte", "")
         journal.at[i, "pages_collectees"] = r.get("pages_collectees", 0)
         journal.at[i, "fichier_csv"] = r.get("fichier_csv", "")
+        # Les remarques du diagnostic sont gardées ; celles de la collecte précédente sont remplacées,
+        # sinon le journal, relu chaque nuit, accumulerait « || Collecte : ... » un peu plus chaque jour.
+        avant = ligne.get("problemes_remarques")
+        avant = "" if pd.isna(avant) else str(avant).split(" || Collecte : ")[0].split("Collecte : ")[0]
         remarques = " ".join(r["remarques"])
-        if remarques:
-            avant = ligne.get("problemes_remarques")
-            avant = "" if pd.isna(avant) else str(avant)
-            journal.at[i, "problemes_remarques"] = (avant + " || Collecte : " + remarques).strip(" |")
+        texte = (avant.strip() + " || Collecte : " + remarques) if remarques else avant
+        journal.at[i, "problemes_remarques"] = texte.strip(" |")
     return journal

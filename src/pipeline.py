@@ -5,15 +5,17 @@ Lance tout le projet de bout en bout, sans ouvrir le notebook :
     2. collecte des véhicules (partie 3) ;
     3. journal de tests mis à jour (annexe C), fichier de tous les véhicules du jour,
        et une ligne par site ajoutée à l'historique des collectes ;
-    4. prétraitement (partie 4) : tous les fichiers bruts -> observations quotidiennes,
+    4. enrichissement : décodage des nouveaux NIV par l'API officielle vPIC de la NHTSA (cache) ;
+    5. prétraitement (partie 4) : tous les fichiers bruts -> observations quotidiennes,
        véhicules consolidés, concessionnaires et rapport de qualité.
 
 Utilisation, depuis la racine du projet (environnement .venv activé) :
-    python src/pipeline.py                                    # tout : diagnostic + collecte + prétraitement
+    python src/pipeline.py                                    # tout : diagnostic, collecte, enrichissement, prétraitement
     python src/pipeline.py --etapes collecte                  # seulement la collecte
     python src/pipeline.py --etapes pretraitement             # seulement le prétraitement (aucune requête)
+    python src/pipeline.py --etapes enrichissement pretraitement   # décoder les NIV puis recalculer les tables
     python src/pipeline.py --sites hull_nissan bank_street_kia   # seulement certains sites
-    python src/pipeline.py --etapes collecte pretraitement --silencieux --log  # mode automatique (chaque nuit)
+    python src/pipeline.py --etapes collecte enrichissement pretraitement --silencieux --log  # chaque nuit
 
 Collecte quotidienne : scripts/collecte_quotidienne.bat lance la dernière commande ci-dessus,
 et scripts/installer_tache.ps1 l'inscrit dans le Planificateur de tâches de Windows.
@@ -33,6 +35,7 @@ import pandas as pd
 
 import config
 import diagnostic
+import enrichissement
 import extraction
 import pretraitement
 import projet_scraping as ws
@@ -78,7 +81,12 @@ def executer(args):
     if "diagnostic" in args.etapes or "collecte" in args.etapes:
         executer_collecte(args, debut)
 
-    # --- 4. Prétraitement (aucune requête : lit seulement resultats/brut/)
+    # --- 4. Enrichissement (API officielle vPIC : seulement les NIV jamais décodés)
+    if "enrichissement" in args.etapes:
+        print("\n--- Enrichissement (API vPIC de la NHTSA)")
+        enrichissement.enrichir(afficher=not args.silencieux)
+
+    # --- 5. Prétraitement (aucune requête : lit seulement resultats/brut/ et le cache des NIV)
     if "pretraitement" in args.etapes:
         print("\n--- Prétraitement")
         pretraitement.pretraiter()
@@ -123,8 +131,8 @@ def executer_collecte(args, debut):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Diagnostic et collecte des inventaires de véhicules d'occasion")
-    ap.add_argument("--etapes", nargs="+", choices=["diagnostic", "collecte", "pretraitement"],
-                    default=["diagnostic", "collecte", "pretraitement"])
+    ap.add_argument("--etapes", nargs="+", choices=["diagnostic", "collecte", "enrichissement", "pretraitement"],
+                    default=["diagnostic", "collecte", "enrichissement", "pretraitement"])
     ap.add_argument("--sites", nargs="*", default=[], help="identifiants des sites (par défaut : tous)")
     ap.add_argument("--silencieux", action="store_true", help="n'affiche que le résumé")
     ap.add_argument("--log", action="store_true",

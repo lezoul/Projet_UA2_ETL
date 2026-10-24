@@ -2,7 +2,8 @@
 REM ==========================================================================
 REM collecte_quotidienne.bat
 REM Projet UA2 Web scraping : vehicules d'occasion (Ottawa-Gatineau)
-REM Lance la collecte quotidienne (sans le diagnostic) puis le pretraitement,
+REM Lance la collecte quotidienne (sans le diagnostic), le decodage des nouveaux NIV
+REM (API officielle vPIC) puis le pretraitement,
 REM en mode silencieux,
 REM avec un fichier de log date dans logs\.
 REM Lance chaque nuit par le Planificateur de taches (voir installer_tache.ps1).
@@ -21,8 +22,9 @@ if not exist ".venv\Scripts\python.exe" (
 )
 
 REM Collecte du jour (memes delais et memes regles que le notebook),
+REM decodage des nouveaux NIV (API vPIC, un lot de 50 au plus en general),
 REM puis pretraitement de tous les fichiers bruts (aucune requete)
-".venv\Scripts\python.exe" "src\pipeline.py" --etapes collecte pretraitement --silencieux --log
+".venv\Scripts\python.exe" "src\pipeline.py" --etapes collecte enrichissement pretraitement --silencieux --log
 set CODE=%ERRORLEVEL%
 
 if not "%CODE%"=="0" (

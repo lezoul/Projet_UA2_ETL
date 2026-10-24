@@ -37,12 +37,15 @@ MAX_PAGES_PAR_SITE = 20      # garde-fou : jamais plus de 20 pages de liste par 
 
 # ---------------------------------------------------------------------------
 # Partie 1 du cours : question 1 (API officielle ou données ouvertes)
-# À revérifier et à redater avant la remise.
+# Pied de page de chaque site vérifié le 2026-10-09 ; portails de données ouvertes revérifiés le 2026-10-22.
+# À redater si on revérifie avant la remise.
 # ---------------------------------------------------------------------------
 
 VERIFICATION_API_MANUELLE = (
-    "Aucune API officielle ni donnée ouverte trouvée (pied de page du site, ouvert.canada.ca, "
-    "donneesquebec.ca ; vérifié le 2026-10-09). Seules des sources commerciales payantes existent."
+    "Aucune API officielle ni donnée ouverte trouvée (pied de page du site vérifié le 2026-10-09 ; "
+    "ouvert.canada.ca et donneesquebec.ca revérifiés le 2026-10-22). Seules des sources commerciales "
+    "payantes existent (services de collecte revendus, places de marché). Pour le décodage du NIV, "
+    "l'API officielle vPIC de la NHTSA existe et est utilisée (voir la section Enrichissement plus bas)."
 )
 
 # ---------------------------------------------------------------------------
@@ -320,3 +323,40 @@ MARQUES = {
     "RAM": "RAM", "GMC": "GMC", "BMW": "BMW", "MERCEDES-BENZ": "Mercedes-Benz",
     "ALFA ROMEO": "Alfa Romeo", "MINI": "MINI",
 }
+
+# ---------------------------------------------------------------------------
+# Enrichissement par le NIV : API officielle vPIC de la NHTSA (src/enrichissement.py)
+# Vérifié le 2026-10-23 sur https://vpic.nhtsa.dot.gov/About et la FAQ de l'API :
+#   - service public du département des Transports des États-Unis, données déclarées par les
+#     constructeurs (49 CFR Part 565), « freely used by the public », gratuit, sans inscription ;
+#   - contrôle automatique du trafic ; les gros traitements par lots sont demandés la nuit (heure de l'Est) :
+#     notre collecte de 3 h respecte cette demande ;
+#   - couvre les véhicules homologués pour la vente aux États-Unis (modèle 1981 et plus récents).
+# Le NIV ne contient pas la couleur : elle ne peut pas être complétée par cette source.
+# ---------------------------------------------------------------------------
+
+URL_VPIC = "https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVINValuesBatch/"
+FICHIER_NIV_DECODES = DOSSIER_RESULTATS / "niv_decodes_vpic.csv"   # cache : chaque NIV n'est décodé qu'une fois
+TAILLE_LOT_VPIC = 50          # maximum de la méthode DecodeVINValuesBatch
+DELAI_VPIC = 2.0              # secondes entre deux lots, comme pour les sites
+MAX_LOTS_VPIC = 40            # garde-fou : au plus 2 000 NIV par exécution
+
+# Champs de vPIC conservés -> nom de colonne dans le cache
+CHAMPS_VPIC = {
+    "FuelTypePrimary": "vpic_carburant",
+    "FuelTypeSecondary": "vpic_carburant_secondaire",
+    "ElectrificationLevel": "vpic_electrification",
+    "BodyClass": "vpic_carrosserie",
+    "DriveType": "vpic_traction",
+    "ErrorCode": "vpic_code_erreur",
+}
+
+# Carburant à partir de vPIC : on lit « électrification | carburant principal », électrification d'abord,
+# car un hybride a « Gasoline » comme carburant principal et « Strong HEV » comme électrification.
+REGLES_CARBURANT_VPIC = [
+    (r"hybrid|\bhev\b|phev", "Hybride"),
+    (r"\bbev\b|battery electric|^\s*\|\s*electric", "Électrique"),
+    (r"diesel", "Diesel"),
+    (r"gasoline|ethanol|flex", "Essence"),
+]
+# Carrosserie et traction de vPIC : mêmes règles que pour les sites (REGLES_CATEGORIE, REGLES_TRACTION).

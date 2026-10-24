@@ -13,12 +13,16 @@ Principes :
     et sa date ; les valeurs d'origine sont gardées dans des colonnes *_brut ;
   - on ne supprime pas une ligne douteuse, on la signale (colonnes km_suspect, niv_invalide, ...) :
     c'est l'analyse qui décide de l'exclure ou non ;
-  - toutes les règles (harmonisation, seuils, collectes incomplètes) sont dans config.py.
+  - toutes les règles (harmonisation, seuils, collectes incomplètes) sont dans config.py ;
+  - les cases vides (carburant, catégorie, traction) sont complétées par le décodage officiel du NIV
+    (API vPIC de la NHTSA, cache écrit par enrichissement.py), jamais en écrasant une valeur du site ;
+    l'origine de chaque valeur est gardée dans <colonne>_source.
 
 Fonctions (dans l'ordre du traitement) :
     charger_collectes()          -> toutes les lignes brutes + colonnes de source
     nettoyer_types(df)           -> NIV propre, nombres, dates, prix 0 -> manquant
     harmoniser(df)               -> une seule écriture par valeur (état, transmission, couleur, ...)
+    completer_avec_vpic(df)      -> cases vides complétées par le NIV décodé (appelée par harmoniser)
     ajouter_prix_comparable(df)  -> prix sans les frais Dilawri, pour comparer les sites entre eux
     controler_qualite(df)        -> indicateurs de qualité + rapport
     construire_observations(df)  -> table des observations (1 véhicule, 1 site, 1 jour)
@@ -167,6 +171,41 @@ def deduire_categorie(df):
     return df
 
 
+def completer_avec_vpic(df):
+    """
+    Complète carburant, catégorie et traction quand le site ne les publie pas, à partir du cache
+    resultats/niv_decodes_vpic.csv (API officielle vPIC, voir enrichissement.py).
+    Priorité : valeur du site > valeur vPIC > (pour la catégorie) déduction par le modèle.
+    Colonnes <colonne>_source : « site », « vPIC (NHTSA) », « déduite du modèle » ou vide.
+    Sans cache (enrichissement jamais lancé), les colonnes source valent « site » ou vide, rien d'autre ne change.
+    """
+    for colonne in ["carburant", "categorie", "traction"]:
+        df[f"{colonne}_source"] = np.where(df[colonne].notna() & (df[colonne] != "Non reconnu"), "site", None)
+
+    if not config.FICHIER_NIV_DECODES.exists():
+        print("Aucun NIV décodé (lancer l'étape enrichissement) : carburant, catégorie et traction "
+              "restent tels que publiés par les sites.")
+        return df
+
+    vpic = pd.read_csv(config.FICHIER_NIV_DECODES, encoding="utf-8-sig", dtype=str).set_index("niv")
+    vpic = vpic[~vpic.index.duplicated(keep="last")]
+    texte_carburant = (vpic["vpic_electrification"].fillna("") + " | " + vpic["vpic_carburant"].fillna(""))
+    valeurs = pd.DataFrame({
+        "carburant": texte_carburant.map(lambda t: appliquer_regles(t, config.REGLES_CARBURANT_VPIC)
+                                         if t.strip(" |") else np.nan),
+        "categorie": vpic["vpic_carrosserie"].map(lambda v: appliquer_regles(v, config.REGLES_CATEGORIE)),
+        "traction": vpic["vpic_traction"].map(lambda v: appliquer_regles(v, config.REGLES_TRACTION)),
+    }).replace("Non reconnu", np.nan)
+
+    for colonne in ["carburant", "categorie", "traction"]:
+        vide = df[colonne].isna() | (df[colonne] == "Non reconnu")
+        complement = df.loc[vide, "niv"].map(valeurs[colonne])
+        trouve = complement.dropna().index
+        df.loc[trouve, colonne] = complement.loc[trouve]
+        df.loc[trouve, f"{colonne}_source"] = "vPIC (NHTSA)"
+    return df
+
+
 def harmoniser(df):
     """
     Remplace chaque variante par une valeur unique (règles dans config.py) et garde l'original dans <col>_brut.
@@ -190,7 +229,9 @@ def harmoniser(df):
     df.loc[df["famille_couleur"] == "Non reconnu", "famille_couleur"] = "Autre"
     df["famille_couleur"] = df["famille_couleur"].fillna("Non précisé")      # couleur non publiée par le site
 
-    df = deduire_categorie(df)
+    df = completer_avec_vpic(df)        # d'abord la source officielle
+    df = deduire_categorie(df)          # puis, pour ce qui reste vide, le même modèle sur un autre site
+    df.loc[df["categorie_deduite"], "categorie_source"] = "déduite du modèle"
     return df
 
 
@@ -247,6 +288,8 @@ def controler_qualite(df):
     ajouter("Ligne d'une collecte incomplète (gardée, exclue des statuts)", ~df["collecte_complete"],
             " ; ".join(f"{c['plateforme']} {c['jour']}" for c in config.COLLECTES_INCOMPLETES))
     ajouter("Catégorie déduite du même modèle sur un autre site", df["categorie_deduite"])
+    for colonne in ["carburant", "categorie", "traction"]:
+        ajouter(f"{colonne} complété par le NIV (API vPIC)", df[f"{colonne}_source"] == "vPIC (NHTSA)")
     for colonne in ["transmission", "traction", "carburant", "categorie"]:
         ajouter(f"{colonne} manquant", df[colonne].isna())
         non_reconnu = df[colonne] == "Non reconnu"
@@ -268,8 +311,9 @@ COLONNES_OBSERVATIONS = [
     # Annonce
     "url_fiche", "id_annonce", "no_stock", "etat", "disponibilite",
     # Véhicule
-    "annee", "marque", "modele", "version", "categorie", "categorie_deduite", "transmission", "traction",
-    "carburant", "moteur", "couleur_ext", "famille_couleur", "km",
+    "annee", "marque", "modele", "version", "categorie", "categorie_source", "categorie_deduite",
+    "transmission", "traction", "traction_source", "carburant", "carburant_source",
+    "moteur", "couleur_ext", "famille_couleur", "km",
     # Prix
     "prix_affiche", "rabais", "frais", "prix_final", "prix_comparable", "prix_non_affiche",
     # Qualité
